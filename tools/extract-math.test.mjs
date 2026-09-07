@@ -21,6 +21,26 @@ test("no stem or choice region reaches the Correct Answer line", () => {
   }
 });
 
+test("a question with no Correct Answer line still stops short of the Rationale", () => {
+  const doc = openDoc(MATH_PDF);
+  const spans = findSpans(doc);
+  let checked = 0;
+  for (const span of spans) {
+    const anchors = findAnchors(linesInSpan(doc, span));
+    if (anchors.correct || !anchors.rationale) continue;
+    const regions = mathRegions(doc, span);
+    for (const r of [...regions.stem, ...regions.choices.flatMap((c) => c.regions)]) {
+      if (r.page !== anchors.rationale.page) continue;
+      assert.ok(
+        r.y1 < anchors.rationale.y,
+        `${span.id}: region ends at ${r.y1}, Rationale heading at ${anchors.rationale.y}`,
+      );
+    }
+    if (++checked >= 5) break;
+  }
+  assert.ok(checked > 0, "expected questions with no Correct Answer line");
+});
+
 test("the first math question yields a stem image and a numeric answer", () => {
   const doc = openDoc(MATH_PDF);
   const q = extractMathQuestion(doc, findSpans(doc)[0], { write: false });

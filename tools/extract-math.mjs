@@ -37,9 +37,12 @@ export function mathRegions(doc, span) {
   const anchors = findAnchors(lines);
   const choiceLines = findChoiceLines(lines, anchors);
 
-  const guard = anchors.correct
-    ? { page: anchors.correct.page, y: anchors.correct.y - ANSWER_GUARD }
-    : anchors.rationale ?? null;
+  // 38 questions have no Correct Answer line at all - the whole line is absent
+  // and the answer appears only inside the rationale prose. Those fall back to
+  // the Rationale heading, which needs the same offset or the crop catches the
+  // top pixel row of the word "Rationale".
+  const stop = anchors.correct ?? anchors.rationale;
+  const guard = stop ? { page: stop.page, y: stop.y - ANSWER_GUARD } : null;
 
   const stemStart = { page: anchors.question.page, y: anchors.question.y + HEADING_DROP };
   const stemEnd = anchors.answer ? { page: anchors.answer.page, y: anchors.answer.y } : guard;
