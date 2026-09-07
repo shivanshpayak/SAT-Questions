@@ -2,10 +2,15 @@
   "name": "sat-questions",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=24" },
-  "dependencies": { "mupdf": "^1.28.1" },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "mupdf": "^1.28.1"
+  },
   "scripts": {
     "test": "node --test",
+    "serve": "node tools/serve.mjs",
     "diagnose": "node tools/diagnose.mjs",
     "extract": "node tools/extract.mjs",
     "verify": "node tools/verify.mjs"
