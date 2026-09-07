@@ -202,7 +202,7 @@ export function createServer({ root = process.cwd() } = {}) {
       try {
         const parsed = JSON.parse(await readBody(req));
         if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-          res.writeHead(400, TYPES[".json"]  && { "content-type": TYPES[".json"] });
+          res.writeHead(400, { "content-type": TYPES[".json"] });
           res.end(JSON.stringify({ error: "overrides must be a JSON object keyed by question id" }));
           return;
         }
@@ -1261,6 +1261,10 @@ Expected: PASS, 7/7.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Math crops are referenced as relative paths like images/math/x.png.
+       This keeps them resolving even if the page is opened at /app/index.html
+       rather than /. -->
+  <base href="/">
   <title>SAT Practice</title>
   <link rel="stylesheet" href="/app/styles.css">
 </head>
@@ -1789,7 +1793,7 @@ git commit -m "feat: wire up subject loading, filtering, answering and feedback"
 **Interfaces:**
 - Produces:
   - `formatDuration(ms): string` — `"m:ss"`, or `"h:mm:ss"` past an hour.
-  - `createTimer({limitMs, onTick, onExpire, now}): {start, stop, elapsed}` — counts up, or down when `limitMs` is set.
+  - `createTimer({limitMs, onTick, onExpire, now}): {start, stop, elapsed, tick}` — counts up, or down when `limitMs` is set. `tick()` advances one step and returns the displayed value, which is what makes the timer testable against an injected clock instead of real time.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2160,7 +2164,10 @@ async function renderReview() {
     list.append(card);
   }
 
-  list.addEventListener("click", async (event) => {
+  // Assignment, not addEventListener: renderReview runs again on every visit
+  // to the screen, and addEventListener would stack a duplicate handler each
+  // time, saving the same correction repeatedly.
+  list.onclick = async (event) => {
     const id = event.target.dataset?.save;
     if (!id) return;
     const input = list.querySelector(`input[data-id="${id}"]`);
@@ -2169,7 +2176,7 @@ async function renderReview() {
     existing[id] = buildOverride(question, { correct: input.value, tier: "clean" });
     const result = await saveOverrides(existing, postJson);
     el("bar-status").textContent = result.ok ? `Saved correction for ${id}` : "Save failed";
-  }, { once: false });
+  };
 }
 ```
 
@@ -2242,7 +2249,7 @@ Run: `npm run serve` and confirm each of these, which together cover every featu
 1. **Reading, unfiltered** — start, answer one question, see the rationale.
 2. **An underline question renders its underline** — pick the Craft and Structure domain and look for underlined text in a stem.
 3. **Math multiple choice** — choices render as separate images and are individually clickable.
-4. **Math free-response** — an input box appears; typing `3/2` for an answer of `1.5` is accepted.
+4. **Math free-response** — an input box appears. Find a question whose stored answer lists two forms (`npm run diagnose` output aside, search `data/math.json` for a `correct` value containing a comma, e.g. `"-.9333, -14/15"`) and confirm **both** forms are accepted.
 5. **A self-marked question** — the two self-marking buttons appear with the rationale.
 6. **Filters** — selecting a domain reduces the match count; selecting a skill reduces it further.
 7. **Timed set** — the clock runs and results list every question.
