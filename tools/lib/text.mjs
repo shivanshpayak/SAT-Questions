@@ -73,8 +73,26 @@ function renderRuns(chars, bands, italicFonts) {
   return html;
 }
 
+const KERNING_SPACE_RATIO = 0.5;
+
+// These PDFs emit a real word space as a glyph ~2.2pt wide, but also emit a
+// hair-thin ~0.2pt space for kerned pairs such as "rt" and "ny", which would
+// render as "effor t" and "man y". Genuine spaces outnumber the artifacts, so
+// the median space width identifies the real ones and anything well under it
+// is dropped. An absolute cutoff would not survive a change of font size.
+export function dropKerningSpaces(chars) {
+  const widths = chars.filter((c) => c.c === " ").map((c) => c.x1 - c.x0).sort((a, b) => a - b);
+  if (!widths.length) return chars;
+  const median = widths[Math.floor(widths.length / 2)];
+  if (!(median > 0)) return chars;
+  const minimum = median * KERNING_SPACE_RATIO;
+  return chars.filter((c) => c.c !== " " || c.x1 - c.x0 >= minimum);
+}
+
 export function charsToHtml(chars, { bands = [], italicFonts = new Set() } = {}) {
-  const paragraphs = groupParagraphs(groupLines(chars));
+  // Runs before grouping, so the synthetic spaces that join wrapped lines are
+  // added later and cannot be filtered out here.
+  const paragraphs = groupParagraphs(groupLines(dropKerningSpaces(chars)));
   return paragraphs
     .map((lines) => {
       // The joining space uses font " ", which is never in italicFonts, so

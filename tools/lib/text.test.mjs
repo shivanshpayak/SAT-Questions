@@ -44,6 +44,21 @@ test("splits paragraphs on a large vertical gap and joins wrapped lines", () => 
   assert.equal(html, "<p>one two</p><p>three</p>");
 });
 
+test("drops hair-thin kerning spaces that split words", () => {
+  // Real word spaces in these PDFs are ~2.2pt; kerning artifacts inside a
+  // word are ~0.2pt and would otherwise render as "effor t".
+  const chars = [];
+  let x = 10;
+  const push = (c, width) => { chars.push({ c, font: "body", x0: x, x1: x + width, top: 92, bot: 100 }); x += width; };
+  for (const c of "effor") push(c, 4);
+  push(" ", 0.2);            // kerning artifact
+  push("t", 3);
+  push(" ", 2.2);            // real word space
+  for (const c of "people") push(c, 4);
+
+  assert.equal(charsToHtml(chars, { bands: [], italicFonts: new Set() }), "<p>effort people</p>");
+});
+
 test("returns an empty string when there are no characters", () => {
   assert.equal(charsToHtml([], { bands: [], italicFonts: new Set() }), "");
 });
