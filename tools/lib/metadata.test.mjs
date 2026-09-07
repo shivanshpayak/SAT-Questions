@@ -54,3 +54,22 @@ test("ignores lines at or below the Question heading", () => {
 test("returns null when the header row is missing", () => {
   assert.equal(parseMetadata([{ x: 24, y: 83, text: "SAT" }], 127), null);
 });
+
+test("ignores lines from other pages that fall in the metadata band", () => {
+  // A question spanning three pages carries body text from later pages whose
+  // y happens to sit between the header row and the Question heading.
+  const lines = [
+    ...HEADER.map((h) => ({ ...h, page: 12 })),
+    { page: 12, x: 24, y: 83, text: "SAT" },
+    { page: 12, x: 139, y: 83, text: "Math" },
+    { page: 12, x: 254, y: 83, text: "Algebra" },
+    { page: 12, x: 369, y: 83, text: "Linear functions" },
+    { page: 12, x: 484, y: 83, text: "Hard" },
+    { page: 13, x: 484, y: 90, text: ". With the" },
+    { page: 14, x: 254, y: 110, text: ", which is equivalent to yields" },
+  ];
+  assert.deepEqual(parseMetadata(lines, 127), {
+    assessment: "SAT", test: "Math", domain: "Algebra",
+    skill: "Linear functions", difficulty: "Hard",
+  });
+});
