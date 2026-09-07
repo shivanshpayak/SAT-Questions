@@ -1,0 +1,8 @@
+node_modules/
+images/
+data/*.json
+!data/overrides.json
+.cache/
+
+# Source PDFs: ~97MB of immutable input that never changes.
+*.pdf
