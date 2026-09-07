@@ -1,4 +1,4 @@
-import { pageLines } from "./pdf.mjs";
+import { pageLines, withPage } from "./pdf.mjs";
 
 const ID_RE = /^Question ID:\s*([0-9a-f]{6,})$/;
 
@@ -6,7 +6,7 @@ export function findSpans(doc) {
   const starts = [];
   const pageCount = doc.countPages();
   for (let page = 0; page < pageCount; page++) {
-    for (const line of pageLines(doc.loadPage(page))) {
+    for (const line of withPage(doc, page, pageLines)) {
       const match = ID_RE.exec(line.text.trim());
       if (match) starts.push({ id: match[1], page, y: line.y });
     }
@@ -26,7 +26,7 @@ export function findSpans(doc) {
 export function linesInSpan(doc, span) {
   const out = [];
   for (let page = span.startPage; page <= span.endPage; page++) {
-    for (const line of pageLines(doc.loadPage(page))) {
+    for (const line of withPage(doc, page, pageLines)) {
       if (page === span.startPage && line.y < span.startY) continue;
       if (page === span.endPage && line.y >= span.endY) continue;
       out.push({ page, ...line });
