@@ -6,6 +6,8 @@ import {
   startSession, currentId, gradeAnswer, submitAnswer, advance, isComplete, scoreSession,
 } from "./session.js";
 import { stemHtml, choiceHtml, choiceLetters, escapeAttr } from "./render.js";
+import { formatDuration, createTimer } from "./timer.js";
+import { buildOverride, saveOverrides } from "./overrides.js";
 
 const store = createStore(
   globalThis.localStorage ?? { getItem: () => null, setItem: () => {}, removeItem: () => {} },
@@ -13,6 +15,16 @@ const store = createStore(
 
 const fetchJson = async (path) => {
   const res = await fetch(path);
+  if (!res.ok) throw new Error(`${res.status} ${path}`);
+  return res.json();
+};
+
+const postJson = async (path, body) => {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
   if (!res.ok) throw new Error(`${res.status} ${path}`);
   return res.json();
 };
@@ -104,6 +116,12 @@ function startPractice() {
   store.saveQueue(key, walker);
 
   state.session = startSession({ ids: ordered.filter(Boolean), mode, size: wanted });
+
+  state.timer?.stop();
+  state.timer = createTimer({ onTick: (ms) => { el("bar-timer").textContent = formatDuration(ms); } });
+  el("bar-timer").hidden = false;
+  state.timer.start();
+
   showScreen("question");
   renderCurrent();
 }
@@ -207,20 +225,130 @@ function showFeedback(q, response) {
 }
 
 function finishSession() {
+  state.timer?.stop();
+  el("bar-timer").hidden = true;
   showScreen("results");
   renderResults();
 }
 
 function renderResults() {
   const score = scoreSession(state.session);
+  const seconds = state.timer ? state.timer.elapsed() : 0;
   el("results-score").textContent =
-    `${score.correct} of ${score.answered} correct (${Math.round(score.accuracy * 100)}%)`;
-  el("results-list").replaceChildren();
+    `${score.correct} of ${score.answered} correct (${Math.round(score.accuracy * 100)}%) in ${formatDuration(seconds)}`;
+
+  const table = document.createElement("table");
+  table.innerHTML = "<tr><th>#</th><th>Skill</th><th>Your answer</th><th>Correct</th></tr>";
+  state.session.ids.forEach((id, i) => {
+    const q = state.byId.get(id);
+    const response = state.session.responses[id];
+    const verdict = !response
+      ? "skipped"
+      : response.correct === true ? "right"
+      : response.correct === false ? "wrong"
+      : "self-marked";
+    const row = document.createElement("tr");
+    row.innerHTML =
+      `<td>${i + 1}</td><td>${escapeAttr(q.skill ?? "")}</td>` +
+      `<td>${escapeAttr(response?.answer ?? "")}</td>` +
+      `<td>${escapeAttr(q.correct ?? "-")} (${verdict})</td>`;
+    table.append(row);
+  });
+  el("results-list").replaceChildren(table);
 }
 
 function skip() {
   state.session = advance(state.session);
   renderCurrent();
+}
+
+function accuracyTable(rows) {
+  const table = document.createElement("table");
+  table.innerHTML = "<tr><th>Name</th><th>Seen</th><th>Correct</th><th>Accuracy</th></tr>";
+  for (const [name, { seen, correct }] of rows) {
+    const row = document.createElement("tr");
+    row.innerHTML =
+      `<td>${escapeAttr(name)}</td><td>${seen}</td><td>${correct}</td>` +
+      `<td>${Math.round((correct / seen) * 100)}%</td>`;
+    table.append(row);
+  }
+  return table;
+}
+
+async function renderStats() {
+  // Stats span both subjects, so load whichever is not already in memory.
+  const all = [];
+  for (const subject of ["reading", "math"]) {
+    if (state.subject === subject && state.questions.length) {
+      all.push(...state.questions);
+      continue;
+    }
+    try {
+      const { questions } = await loadSubject(subject, fetchJson);
+      all.push(...questions);
+    } catch {
+      /* a subject that fails to load is simply not counted */
+    }
+  }
+
+  const progress = store.getProgress();
+  const attempted = Object.keys(progress).length;
+  const correct = Object.values(progress).filter((e) => e.lastCorrect).length;
+  const missed = store.missedIds().length;
+  el("stats-summary").textContent =
+    attempted === 0
+      ? "No questions answered yet."
+      : `${attempted} questions attempted, ${correct} currently correct, ${missed} to review.`;
+
+  el("stats-domains").replaceChildren(accuracyTable(store.accuracyBy(all, "domain")));
+  el("stats-skills").replaceChildren(accuracyTable(store.accuracyBy(all, "skill")));
+}
+
+async function renderReview() {
+  // loadSubject drops flagged questions, so read the raw files here.
+  const flagged = [];
+  for (const subject of ["reading", "math"]) {
+    try {
+      const data = await fetchJson(`/data/${subject}.json`);
+      flagged.push(...data.questions.filter((q) => q.tier === "flagged"));
+    } catch {
+      /* subject unavailable */
+    }
+  }
+
+  el("review-empty").hidden = flagged.length > 0;
+  const list = el("review-list");
+  list.replaceChildren();
+
+  for (const q of flagged) {
+    const card = document.createElement("div");
+    card.className = "choice";
+    card.innerHTML =
+      `<div><p><strong>${escapeAttr(q.id)}</strong> &middot; ${escapeAttr(q.subject)} &middot; ` +
+      `${escapeAttr((q.flags ?? []).join(", "))}</p>` +
+      `<div class="stem">${stemHtml(q)}</div>` +
+      `<label>Correct answer <input type="text" data-id="${escapeAttr(q.id)}" value="${escapeAttr(q.correct ?? "")}"></label> ` +
+      `<button class="primary" data-save="${escapeAttr(q.id)}">Save correction</button></div>`;
+    list.append(card);
+  }
+
+  // Assignment, not addEventListener: renderReview runs again on every visit
+  // to the screen, and addEventListener would stack a duplicate handler each
+  // time, saving the same correction repeatedly.
+  list.onclick = async (event) => {
+    const id = event.target.dataset?.save;
+    if (!id) return;
+    const input = list.querySelector(`input[data-id="${id}"]`);
+    const question = flagged.find((q) => q.id === id);
+    const existing = await fetchJson("/data/overrides.json").catch(() => ({}));
+    existing[id] = buildOverride(question, { correct: input.value, tier: "clean" });
+    try {
+      const result = await saveOverrides(existing, postJson);
+      el("bar-status").textContent = result.ok ? `Saved correction for ${id}` : "Save failed";
+    } catch {
+      el("bar-status").textContent = "Save failed";
+    }
+  };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -237,5 +365,14 @@ document.addEventListener("DOMContentLoaded", () => {
   el("results-again").addEventListener("click", () => showScreen("home"));
   el("nav-home").addEventListener("click", () => showScreen("home"));
   el("q-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+
+  el("nav-stats").addEventListener("click", async () => { showScreen("stats"); await renderStats(); });
+  el("nav-review").addEventListener("click", async () => { showScreen("review"); await renderReview(); });
+  el("stats-reset").addEventListener("click", () => {
+    if (!confirm("Erase all progress? This cannot be undone.")) return;
+    store.reset();
+    renderStats();
+  });
+
   showScreen("home");
 });
