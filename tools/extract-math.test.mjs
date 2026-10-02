@@ -41,6 +41,26 @@ test("a question with no Correct Answer line still stops short of the Rationale"
   assert.ok(checked > 0, "expected questions with no Correct Answer line");
 });
 
+test("no rationale region reaches into the next question's span", () => {
+  const doc = openDoc(MATH_PDF);
+  const spans = findSpans(doc);
+  let checked = 0;
+  for (const span of spans) {
+    if (!Number.isFinite(span.endY)) continue;
+    const regions = mathRegions(doc, span);
+    for (const r of regions.rationale) {
+      if (r.page !== span.endPage) continue;
+      assert.ok(
+        r.y1 <= span.endY,
+        `${span.id}: rationale region on page ${r.page} ends at ${r.y1}, next question starts at ${span.endY}`,
+      );
+      checked++;
+    }
+    if (checked >= 20) break;
+  }
+  assert.ok(checked > 0, "expected at least one rationale region on a span's final page");
+});
+
 test("the first math question yields a stem image and a numeric answer", () => {
   const doc = openDoc(MATH_PDF);
   const q = extractMathQuestion(doc, findSpans(doc)[0], { write: false });

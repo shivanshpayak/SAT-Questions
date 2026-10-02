@@ -9,6 +9,9 @@ const TYPES = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".svg": "image/svg+xml",
+  // Without this the fallback is octet-stream, which makes the browser download
+  // the source PDF rather than open it at the #page= a question links to.
+  ".pdf": "application/pdf",
 };
 
 const MAX_BODY_BYTES = 5 * 1024 * 1024;
@@ -25,6 +28,69 @@ export function resolveSafe(root, urlPath) {
   const full = path.resolve(base, relative);
   if (full !== base && !full.startsWith(base + path.sep)) return null;
   return full;
+}
+
+// Returns the requested slice, `undefined` for "send the whole file", or `null`
+// for a range that cannot be satisfied. Only the single-range forms are handled,
+// which is all a PDF viewer seeking to one page of a 61 MB file ever sends.
+export function parseRange(header, size) {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(String(header ?? "").trim());
+  if (!match) return undefined;
+  const [, rawStart, rawEnd] = match;
+  if (rawStart === "" && rawEnd === "") return undefined;
+
+  const start = rawStart === "" ? Math.max(0, size - Number(rawEnd)) : Number(rawStart);
+  const end = rawStart === "" || rawEnd === "" ? size - 1 : Math.min(Number(rawEnd), size - 1);
+  if (start > end || start >= size) return null;
+  return { start, end };
+}
+
+function sendFile(file, req, res) {
+  fs.stat(file, (err, stat) => {
+    if (err || !stat.isFile()) {
+      res.writeHead(404, { "content-type": "text/plain" });
+      res.end("Not found");
+      return;
+    }
+
+    // no-cache still revalidates every request, so edits show up immediately;
+    // the ETag just turns that revalidation into a 304 instead of a resend.
+    const etag = `"${stat.size.toString(16)}-${Math.floor(stat.mtimeMs).toString(16)}"`;
+    const headers = {
+      "content-type": TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
+      "cache-control": "no-cache",
+      "accept-ranges": "bytes",
+      "last-modified": stat.mtime.toUTCString(),
+      etag,
+    };
+
+    if (req.headers["if-none-match"] === etag) {
+      res.writeHead(304, headers);
+      res.end();
+      return;
+    }
+
+    const range = parseRange(req.headers.range, stat.size);
+    if (range === null) {
+      res.writeHead(416, { ...headers, "content-range": `bytes */${stat.size}` });
+      res.end();
+      return;
+    }
+
+    if (range) {
+      res.writeHead(206, {
+        ...headers,
+        "content-range": `bytes ${range.start}-${range.end}/${stat.size}`,
+        "content-length": range.end - range.start + 1,
+      });
+    } else {
+      res.writeHead(200, { ...headers, "content-length": stat.size });
+    }
+
+    const stream = fs.createReadStream(file, range ?? {});
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
+  });
 }
 
 function readBody(req) {
@@ -74,18 +140,7 @@ export function createServer({ root = process.cwd() } = {}) {
       return;
     }
 
-    fs.readFile(file, (err, body) => {
-      if (err) {
-        res.writeHead(404, { "content-type": "text/plain" });
-        res.end("Not found");
-        return;
-      }
-      res.writeHead(200, {
-        "content-type": TYPES[path.extname(file).toLowerCase()] ?? "application/octet-stream",
-        "cache-control": "no-cache",
-      });
-      res.end(body);
-    });
+    sendFile(file, req, res);
   });
 }
 

@@ -33,6 +33,11 @@ button:disabled { color: var(--muted); border-color: var(--line); cursor: defaul
 .chip[aria-pressed="true"] { border-color: var(--ink); font-weight: 600; }
 
 .meta { color: var(--muted); font-size: .85rem; margin-bottom: .75rem; }
+/* The id is the College Board id printed on the PDF page, so it is also what
+   you search for if the #page= link lands slightly off. */
+.qid { font-family: ui-monospace, Consolas, "Courier New", monospace; }
+.pdf { color: inherit; }
+.warn { font-style: italic; }
 .stem { margin-bottom: 1.25rem; }
 .stem img, .choice img, .feedback img { max-width: 100%; height: auto; display: block; }
 

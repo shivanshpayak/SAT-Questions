@@ -9,6 +9,7 @@ import { cropToPng } from "./lib/png.mjs";
 const CROP_SCALE = 2.5;
 const HEADING_DROP = 10;   // clear the section heading itself
 const ANSWER_GUARD = 4;    // stay this far above the Correct Answer line
+const NEXT_QUESTION_GUARD = 4; // stay this far above the next "Question ID:" line
 const IMAGE_DIR = path.join("images", "math");
 
 const pageBoundsCache = new Map();
@@ -26,7 +27,13 @@ function regionsBetween(doc, span, from, to) {
   for (let page = from.page; page <= lastPage; page++) {
     const bounds = boundsOf(doc, page);
     const y0 = page === from.page ? from.y : bounds[1];
-    const y1 = to && page === to.page ? to.y : bounds[3];
+    let y1 = to && page === to.page ? to.y : bounds[3];
+    // Open-ended crops (the rationale) have no inner stop line, so on the
+    // span's final page we must cap at the next question's "Question ID:" row
+    // or the crop pulls the next question's full card into the rationale image.
+    if (!to && page === span.endPage && Number.isFinite(span.endY)) {
+      y1 = Math.min(y1, span.endY - NEXT_QUESTION_GUARD);
+    }
     if (y1 - y0 > 2) regions.push({ page, y0, y1 });
   }
   return regions;

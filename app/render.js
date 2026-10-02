@@ -8,6 +8,18 @@ export function isImageQuestion(q) {
   return q.presentation === "image";
 }
 
+const PDFS = { math: "Math SAT Questions.pdf", reading: "SAT Reading.pdf" };
+
+// Where a question came from, so a bad crop can be checked against the original.
+// Stored pages are 0-based mupdf indices; a viewer's #page= counts from 1.
+export function sourceUrl(q) {
+  const file = PDFS[q?.subject];
+  const first = q?.source?.pages?.[0];
+  if (!file || !Number.isInteger(first)) return null;
+  const page = first + 1;
+  return { href: `/${encodeURIComponent(file)}#page=${page}`, page };
+}
+
 export function choiceLetters(q) {
   return (q.choices ?? []).map((c) => c.label);
 }

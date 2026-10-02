@@ -10,7 +10,7 @@ import { filterQuestions } from "./bank.js";
 import { acceptedAnswers } from "./answers.js";
 import { createQueue, currentId as queueCurrent, advanceQueue } from "./queue.js";
 import { startSession, currentId, gradeAnswer, submitAnswer, advance, scoreSession } from "./session.js";
-import { stemHtml, choiceHtml, choiceLetters } from "./render.js";
+import { stemHtml, choiceHtml, choiceLetters, sourceUrl } from "./render.js";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const haveData = fs.existsSync(path.join(ROOT, "data", "math.json"));
@@ -159,4 +159,15 @@ test("every referenced Math image exists on disk", { skip: !haveData }, async ()
     }
   }
   assert.ok(checked > 3000, `expected the full image set, saw ${checked}`);
+});
+
+test("every real question can be traced back to a page in its source PDF", { skip: !haveData }, async () => {
+  for (const subject of ["reading", "math"]) {
+    const { questions } = await loadSubject(subject, fetchJson);
+    for (const q of questions) {
+      const source = sourceUrl(q);
+      assert.ok(source, `${subject}/${q.id} has no source page to link to`);
+      assert.ok(source.page >= 1, `${subject}/${q.id} links to page ${source.page}`);
+    }
+  }
 });

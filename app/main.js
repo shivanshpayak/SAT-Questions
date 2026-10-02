@@ -5,7 +5,7 @@ import { createStore } from "./store.js";
 import {
   startSession, currentId, gradeAnswer, submitAnswer, advance, isComplete, scoreSession,
 } from "./session.js";
-import { stemHtml, choiceHtml, choiceLetters, escapeAttr } from "./render.js";
+import { stemHtml, choiceHtml, choiceLetters, escapeAttr, sourceUrl } from "./render.js";
 import { formatDuration, createTimer } from "./timer.js";
 import { buildOverride, saveOverrides } from "./overrides.js";
 
@@ -126,6 +126,27 @@ function startPractice() {
   renderCurrent();
 }
 
+// The id, linked to its PDF page. Used on the surfaces that appear only once
+// the answer is already out, so it needs no "shows the answer" warning.
+function sourceCellHtml(q) {
+  const id = `<code class="qid">${escapeAttr(q.id)}</code>`;
+  const source = sourceUrl(q);
+  if (!source) return id;
+  return `<a class="pdf" target="_blank" rel="noopener" href="${escapeAttr(source.href)}"` +
+    ` title="Page ${source.page} in the source PDF">${id}</a>`;
+}
+
+// Points the wrapper's anchor at the source PDF, or hides the whole thing
+// (separator and warning included) when a question has no page recorded.
+function showSource(wrapper, q) {
+  const source = sourceUrl(q);
+  wrapper.hidden = !source;
+  if (!source) return;
+  const link = wrapper.querySelector("a");
+  link.href = source.href;
+  link.textContent = `page ${source.page} in the PDF`;
+}
+
 function renderCurrent() {
   const id = currentId(state.session);
   if (id === null) return finishSession();
@@ -136,6 +157,8 @@ function renderCurrent() {
   el("q-domain").textContent = q.domain ?? "";
   el("q-skill").textContent = q.skill ?? "";
   el("q-progress").textContent = `${state.session.idx + 1} of ${state.session.ids.length}`;
+  el("q-id").textContent = q.id;
+  showSource(el("q-source"), q);
   el("q-stem").innerHTML = stemHtml(q);
   el("q-feedback").hidden = true;
   el("q-submit").textContent = "Check answer";
@@ -238,7 +261,7 @@ function renderResults() {
     `${score.correct} of ${score.answered} correct (${Math.round(score.accuracy * 100)}%) in ${formatDuration(seconds)}`;
 
   const table = document.createElement("table");
-  table.innerHTML = "<tr><th>#</th><th>Skill</th><th>Your answer</th><th>Correct</th></tr>";
+  table.innerHTML = "<tr><th>#</th><th>Question</th><th>Skill</th><th>Your answer</th><th>Correct</th></tr>";
   state.session.ids.forEach((id, i) => {
     const q = state.byId.get(id);
     const response = state.session.responses[id];
@@ -249,7 +272,7 @@ function renderResults() {
       : "self-marked";
     const row = document.createElement("tr");
     row.innerHTML =
-      `<td>${i + 1}</td><td>${escapeAttr(q.skill ?? "")}</td>` +
+      `<td>${i + 1}</td><td>${sourceCellHtml(q)}</td><td>${escapeAttr(q.skill ?? "")}</td>` +
       `<td>${escapeAttr(response?.answer ?? "")}</td>` +
       `<td>${escapeAttr(q.correct ?? "-")} (${verdict})</td>`;
     table.append(row);
@@ -324,7 +347,7 @@ async function renderReview() {
     const card = document.createElement("div");
     card.className = "choice";
     card.innerHTML =
-      `<div><p><strong>${escapeAttr(q.id)}</strong> &middot; ${escapeAttr(q.subject)} &middot; ` +
+      `<div><p>${sourceCellHtml(q)} &middot; ${escapeAttr(q.subject)} &middot; ` +
       `${escapeAttr((q.flags ?? []).join(", "))}</p>` +
       `<div class="stem">${stemHtml(q)}</div>` +
       `<label>Correct answer <input type="text" data-id="${escapeAttr(q.id)}" value="${escapeAttr(q.correct ?? "")}"></label> ` +

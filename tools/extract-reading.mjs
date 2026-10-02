@@ -10,6 +10,7 @@ import { classifyQuestion, findChoiceLines } from "./lib/classify.mjs";
 
 const DETECT_SCALE = 3;
 const CACHE_PAGES = 4;
+const NEXT_QUESTION_GUARD = 4; // stay this far above the next "Question ID:" line
 
 // Page-local y coordinates repeat on every page, so a band on page 3 would
 // match a glyph at the same height on page 4. Offsetting each page's
@@ -53,7 +54,13 @@ function regionChars(doc, span, from, to) {
 
     const data = pageData(doc, p);
     const lo = p === from.page ? from.y : -Infinity;
-    const hi = to && p === to.page ? to.y : Infinity;
+    let hi = to && p === to.page ? to.y : Infinity;
+    // Open-ended crops (the rationale) have no inner stop line, so on the
+    // span's final page we must cap at the next question's "Question ID:" row
+    // or the rationale pulls the next question's text in.
+    if (!to && p === span.endPage && Number.isFinite(span.endY)) {
+      hi = Math.min(hi, span.endY - NEXT_QUESTION_GUARD);
+    }
 
     const kept = data.chars.filter((c) => c.top >= lo && c.bot <= hi);
     if (!kept.length) continue;

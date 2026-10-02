@@ -4,6 +4,22 @@ import { READING_PDF, openDoc } from "./lib/pdf.mjs";
 import { findSpans } from "./lib/segment.mjs";
 import { extractReadingQuestion } from "./extract-reading.mjs";
 
+test("no rationale pulls in the next question's 'Question ID:' line", () => {
+  const doc = openDoc(READING_PDF);
+  const spans = findSpans(doc);
+  let checked = 0;
+  for (const span of spans.slice(0, 40)) {
+    const q = extractReadingQuestion(doc, span);
+    if (!q.rationale.html) continue;
+    assert.ok(
+      !/Question ID:/i.test(q.rationale.html),
+      `${span.id}: rationale leaked next question — ${q.rationale.html.slice(-200)}`,
+    );
+    checked++;
+  }
+  assert.ok(checked > 0, "expected to check at least one rationale");
+});
+
 test("extracts the first Reading question in full", () => {
   const doc = openDoc(READING_PDF);
   const q = extractReadingQuestion(doc, findSpans(doc)[0]);

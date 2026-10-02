@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { resolveSafe, createServer } from "./serve.mjs";
+import { resolveSafe, parseRange, createServer } from "./serve.mjs";
 
 function tempRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sat-serve-"));
@@ -80,5 +80,75 @@ test("POST /api/overrides rejects a non-object body", async () => {
     });
     assert.equal(res.status, 400);
     assert.equal(fs.existsSync(path.join(root, "data", "overrides.json")), false);
+  });
+});
+
+test("parseRange reads the single-range forms a PDF viewer sends", () => {
+  assert.deepEqual(parseRange("bytes=0-99", 1000), { start: 0, end: 99 });
+  assert.deepEqual(parseRange("bytes=500-", 1000), { start: 500, end: 999 });
+  assert.deepEqual(parseRange("bytes=-100", 1000), { start: 900, end: 999 });
+  assert.deepEqual(parseRange("bytes=0-4000", 1000), { start: 0, end: 999 }, "clamps past the end");
+});
+
+test("parseRange separates 'no range' from 'impossible range'", () => {
+  // undefined means send the whole file; null means 416.
+  assert.equal(parseRange(undefined, 1000), undefined);
+  assert.equal(parseRange("bytes=cheese", 1000), undefined);
+  assert.equal(parseRange("bytes=1000-1200", 1000), null);
+  assert.equal(parseRange("bytes=800-700", 1000), null);
+});
+
+function withPdf(root, name = "Math SAT Questions.pdf") {
+  const body = Buffer.from(`%PDF-1.7\n${"x".repeat(2000)}`);
+  fs.writeFileSync(path.join(root, name), body);
+  return { body, url: "/" + encodeURIComponent(name) };
+}
+
+test("serves a PDF as a PDF, so the browser views it instead of downloading it", async () => {
+  const root = tempRoot();
+  const { body, url } = withPdf(root);
+  await withServer(root, async (base) => {
+    const res = await fetch(base + url);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("content-type"), /application\/pdf/);
+    assert.equal(res.headers.get("accept-ranges"), "bytes");
+    assert.equal((await res.arrayBuffer()).byteLength, body.length);
+  });
+});
+
+test("answers a byte range so a viewer can seek to one page", async () => {
+  const root = tempRoot();
+  const { body, url } = withPdf(root);
+  await withServer(root, async (base) => {
+    const res = await fetch(base + url, { headers: { range: "bytes=9-19" } });
+    assert.equal(res.status, 206);
+    assert.equal(res.headers.get("content-range"), `bytes 9-19/${body.length}`);
+    assert.equal(await res.text(), body.subarray(9, 20).toString());
+
+    const bad = await fetch(base + url, { headers: { range: `bytes=${body.length}-` } });
+    assert.equal(bad.status, 416);
+    assert.equal(bad.headers.get("content-range"), `bytes */${body.length}`);
+  });
+});
+
+test("revalidates with an ETag instead of resending the file", async () => {
+  const root = tempRoot();
+  const { url } = withPdf(root);
+  await withServer(root, async (base) => {
+    const first = await fetch(base + url);
+    const etag = first.headers.get("etag");
+    assert.ok(etag, "a cacheable response needs an ETag");
+    await first.arrayBuffer();
+
+    const again = await fetch(base + url, { headers: { "if-none-match": etag } });
+    assert.equal(again.status, 304);
+    assert.equal((await again.arrayBuffer()).byteLength, 0);
+  });
+});
+
+test("a directory is not a file", async () => {
+  const root = tempRoot();
+  await withServer(root, async (base) => {
+    assert.equal((await fetch(base + "/data")).status, 404);
   });
 });

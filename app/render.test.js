@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isImageQuestion, choiceLetters, stemHtml, choiceHtml, rationaleHtml, escapeAttr } from "./render.js";
+import {
+  isImageQuestion, choiceLetters, stemHtml, choiceHtml, rationaleHtml, escapeAttr, sourceUrl,
+} from "./render.js";
 
 const reading = {
-  id: "r1", subject: "reading", presentation: "text", format: "mcq",
+  id: "r1", subject: "reading", presentation: "text", format: "mcq", source: { pages: [12, 13] },
   stem: { html: "<p>Passage with <u>underline</u> and <em>italics</em>.</p>" },
   choices: [
     { label: "A", html: "<p>A. first</p>" },
@@ -13,7 +15,7 @@ const reading = {
 };
 
 const math = {
-  id: "m1", subject: "math", presentation: "image", format: "mcq",
+  id: "m1", subject: "math", presentation: "image", format: "mcq", source: { pages: [177, 179] },
   stem: { images: ["images/math/m1-stem.png", "images/math/m1-stem-1.png"] },
   choices: [{ label: "A", images: ["images/math/m1-choice-A.png"] }],
   rationale: { images: ["images/math/m1-rationale.png"] },
@@ -58,4 +60,17 @@ test("rationaleHtml handles both shapes", () => {
 
 test("escapeAttr neutralises quotes and angle brackets", () => {
   assert.equal(escapeAttr('a"b<c>&d'), "a&quot;b&lt;c&gt;&amp;d");
+});
+
+test("sourceUrl points at the page in the source PDF, counting from one", () => {
+  // Stored pages are 0-based mupdf indices; a PDF viewer's #page= counts from 1.
+  assert.deepEqual(sourceUrl(math), { href: "/Math%20SAT%20Questions.pdf#page=178", page: 178 });
+  assert.deepEqual(sourceUrl(reading), { href: "/SAT%20Reading.pdf#page=13", page: 13 });
+});
+
+test("sourceUrl gives up rather than guessing a page", () => {
+  assert.equal(sourceUrl({ subject: "math" }), null);
+  assert.equal(sourceUrl({ subject: "math", source: { pages: [] } }), null);
+  assert.equal(sourceUrl({ subject: "geography", source: { pages: [1] } }), null);
+  assert.equal(sourceUrl(undefined), null);
 });

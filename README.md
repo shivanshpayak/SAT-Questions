@@ -60,6 +60,15 @@ export was filtered — so there is no difficulty control.
 
 ## Corrections
 
+Every question shows its College Board id and a link to the page it came
+from in the source PDF, so anything that looks wrong can be checked
+against the original. The link is live before you answer, and the PDF
+page shows the answer and explanation right under the question — hence
+the "(shows the answer)" warning beside it. The same id is printed at the
+top of the PDF page, so it is searchable if the page link lands slightly
+off. Both need the source PDFs in the project root; they are gitignored,
+so a fresh clone has to supply them.
+
 If a question is wrong, put the fix in `data/overrides.json`, keyed by
 question id. It is merged over the generated data at load, so rebuilding
 never destroys a correction. The **Review** screen writes this file for
@@ -77,7 +86,7 @@ you. Never hand-edit the generated files.
 
     npm test
 
-Runs 138 tests with no test framework — `node --test` only. Alongside the
+Runs 147 tests with no test framework — `node --test` only. Alongside the
 unit tests, `app/integration.test.js` runs the real 1,220-question
 dataset through the same modules the browser uses, checking that every
 stem renders, no rendered surface leaks an answer, every stored answer
