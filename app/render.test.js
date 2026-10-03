@@ -64,8 +64,11 @@ test("escapeAttr neutralises quotes and angle brackets", () => {
 
 test("sourceUrl points at the page in the source PDF, counting from one", () => {
   // Stored pages are 0-based mupdf indices; a PDF viewer's #page= counts from 1.
-  assert.deepEqual(sourceUrl(math), { href: "/Math%20SAT%20Questions.pdf#page=178", page: 178 });
-  assert.deepEqual(sourceUrl(reading), { href: "/SAT%20Reading.pdf#page=13", page: 13 });
+  // PDFs live as release assets so the hosted site can link to them without
+  // bundling 97 MB of inputs into the Pages artifact.
+  const base = "https://github.com/shivanshpayak/SAT-Questions/releases/download/pdfs-v1";
+  assert.deepEqual(sourceUrl(math), { href: `${base}/Math%20SAT%20Questions.pdf#page=178`, page: 178 });
+  assert.deepEqual(sourceUrl(reading), { href: `${base}/SAT%20Reading.pdf#page=13`, page: 13 });
 });
 
 test("sourceUrl gives up rather than guessing a page", () => {

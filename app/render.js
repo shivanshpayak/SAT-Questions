@@ -10,6 +10,11 @@ export function isImageQuestion(q) {
 
 const PDFS = { math: "Math SAT Questions.pdf", reading: "SAT Reading.pdf" };
 
+// Hosted PDFs live as GitHub release assets. The release URL serves them with
+// Content-Type: application/pdf, so the browser's native viewer honours the
+// #page= fragment the way a local file does.
+const PDF_BASE = "https://github.com/shivanshpayak/SAT-Questions/releases/download/pdfs-v1";
+
 // Where a question came from, so a bad crop can be checked against the original.
 // Stored pages are 0-based mupdf indices; a viewer's #page= counts from 1.
 export function sourceUrl(q) {
@@ -17,7 +22,7 @@ export function sourceUrl(q) {
   const first = q?.source?.pages?.[0];
   if (!file || !Number.isInteger(first)) return null;
   const page = first + 1;
-  return { href: `/${encodeURIComponent(file)}#page=${page}`, page };
+  return { href: `${PDF_BASE}/${encodeURIComponent(file)}#page=${page}`, page };
 }
 
 export function choiceLetters(q) {

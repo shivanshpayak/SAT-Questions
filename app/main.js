@@ -224,7 +224,7 @@ function showFeedback(q, response) {
     model.verdict === "correct"
       ? '<p class="verdict correct">Correct</p>'
       : model.verdict === "wrong"
-        ? `<p class="verdict wrong">Not quite &mdash; the answer is ${escapeAttr(model.correctText)}</p>`
+        ? `<p class="verdict wrong">Not quite. The answer is ${escapeAttr(model.correctText)}</p>`
         : '<p class="verdict">Check the explanation, then mark yourself</p>';
 
   const selfMark = model.selfMarked
@@ -332,7 +332,7 @@ async function renderReview() {
   const flagged = [];
   for (const subject of ["reading", "math"]) {
     try {
-      const data = await fetchJson(`/data/${subject}.json`);
+      const data = await fetchJson(`data/${subject}.json`);
       flagged.push(...data.questions.filter((q) => q.tier === "flagged"));
     } catch {
       /* subject unavailable */
@@ -363,7 +363,7 @@ async function renderReview() {
     if (!id) return;
     const input = list.querySelector(`input[data-id="${id}"]`);
     const question = flagged.find((q) => q.id === id);
-    const existing = await fetchJson("/data/overrides.json").catch(() => ({}));
+    const existing = await fetchJson("data/overrides.json").catch(() => ({}));
     existing[id] = buildOverride(question, { correct: input.value, tier: "clean" });
     try {
       const result = await saveOverrides(existing, postJson);

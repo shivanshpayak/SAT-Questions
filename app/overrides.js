@@ -8,5 +8,5 @@ export function buildOverride(question, patch) {
 }
 
 export async function saveOverrides(overrides, postJson) {
-  return postJson("/api/overrides", overrides);
+  return postJson("api/overrides", overrides);
 }

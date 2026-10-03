@@ -16,8 +16,8 @@ const question = (id, over = {}) => ({
 
 test("loadSubject merges overrides and drops flagged questions", async () => {
   const fetchJson = fakeFetch({
-    "/data/math.json": { questions: [question("a"), question("b"), question("c", { tier: "flagged" })] },
-    "/data/overrides.json": { b: { correct: "D" } },
+    "data/math.json": { questions: [question("a"), question("b"), question("c", { tier: "flagged" })] },
+    "data/overrides.json": { b: { correct: "D" } },
   });
   const { questions, facets } = await loadSubject("math", fetchJson);
   assert.deepEqual(questions.map((q) => q.id), ["a", "b"]);
@@ -27,7 +27,7 @@ test("loadSubject merges overrides and drops flagged questions", async () => {
 
 test("loadSubject tolerates a missing overrides file", async () => {
   const fetchJson = fakeFetch({
-    "/data/reading.json": { questions: [question("a", { subject: "reading" })] },
+    "data/reading.json": { questions: [question("a", { subject: "reading" })] },
   });
   const { questions } = await loadSubject("reading", fetchJson);
   assert.equal(questions.length, 1);
@@ -35,8 +35,8 @@ test("loadSubject tolerates a missing overrides file", async () => {
 
 test("an override can rescue a flagged question into the pool", async () => {
   const fetchJson = fakeFetch({
-    "/data/math.json": { questions: [question("a", { tier: "flagged" })] },
-    "/data/overrides.json": { a: { tier: "clean", correct: "C" } },
+    "data/math.json": { questions: [question("a", { tier: "flagged" })] },
+    "data/overrides.json": { a: { tier: "clean", correct: "C" } },
   });
   const { questions } = await loadSubject("math", fetchJson);
   assert.deepEqual(questions.map((q) => q.id), ["a"]);

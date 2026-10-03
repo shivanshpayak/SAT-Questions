@@ -2,10 +2,10 @@ import { mergeOverrides, practicePool, facetsOf } from "./bank.js";
 import { rationaleHtml } from "./render.js";
 
 export async function loadSubject(subject, fetchJson) {
-  const data = await fetchJson(`/data/${subject}.json`);
+  const data = await fetchJson(`data/${subject}.json`);
   let overrides = {};
   try {
-    overrides = await fetchJson("/data/overrides.json");
+    overrides = await fetchJson("data/overrides.json");
   } catch {
     overrides = {}; // absent until the first correction is saved
   }

@@ -16,7 +16,7 @@ test("saveOverrides posts the whole map and reports the count", async () => {
   const sent = [];
   const postJson = async (path, body) => { sent.push([path, body]); return { ok: true, count: Object.keys(body).length }; };
   const result = await saveOverrides({ a: { correct: "C" }, b: { tier: "clean" } }, postJson);
-  assert.equal(sent[0][0], "/api/overrides");
+  assert.equal(sent[0][0], "api/overrides");
   assert.deepEqual(sent[0][1], { a: { correct: "C" }, b: { tier: "clean" } });
   assert.deepEqual(result, { ok: true, count: 2 });
 });

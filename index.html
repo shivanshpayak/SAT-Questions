@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Relative base: the app ships both from the dev server at
+       http://127.0.0.1:8123/ and from GitHub Pages at
+       https://shivanshpayak.github.io/SAT-Questions/, and relative URLs let
+       the same build run under either prefix without edits. -->
+  <base href="./">
+  <title>SAT Practice</title>
+  <link rel="stylesheet" href="app/styles.css">
+</head>
+<body>
+  <header class="bar">
+    <button id="nav-home" class="link">SAT Practice</button>
+    <span id="bar-status" class="status"></span>
+    <span class="grow"></span>
+    <span id="bar-timer" class="timer" hidden></span>
+    <button id="nav-review" class="link">Review</button>
+    <button id="nav-stats" class="link">Stats</button>
+  </header>
+
+  <main>
+    <section id="screen-home" class="screen">
+      <h1>Practice</h1>
+      <div class="row">
+        <button class="subject" data-subject="reading">Reading &amp; Writing<small>610 questions</small></button>
+        <button class="subject" data-subject="math">Math<small>610 questions</small></button>
+      </div>
+
+      <div id="home-filters" hidden>
+        <h2>Domains</h2>
+        <div id="filter-domains" class="chips"></div>
+        <h2>Skills</h2>
+        <div id="filter-skills" class="chips"></div>
+
+        <h2>Mode</h2>
+        <div class="row">
+          <label><input type="radio" name="mode" value="practice" checked> Practice (untimed)</label>
+          <label><input type="radio" name="mode" value="timed"> Timed set of
+            <input id="set-size" type="number" min="1" max="100" value="20"> questions</label>
+        </div>
+
+        <div class="row">
+          <label><input type="checkbox" id="only-missed"> Only questions I got wrong</label>
+        </div>
+
+        <p id="pool-count" class="muted"></p>
+        <button id="start" class="primary">Start</button>
+      </div>
+    </section>
+
+    <section id="screen-question" class="screen" hidden>
+      <div class="meta"><span id="q-domain"></span> &middot; <span id="q-skill"></span> &middot; <span id="q-progress"></span>
+        &middot; <code id="q-id" class="qid"></code><span id="q-source" hidden>
+        &middot; <a class="pdf" target="_blank" rel="noopener"></a> <span class="warn">(shows the answer)</span></span></div>
+      <div id="q-stem" class="stem"></div>
+      <div id="q-choices" class="choices"></div>
+      <div id="q-entry" class="entry" hidden>
+        <label for="q-input">Your answer</label>
+        <input id="q-input" type="text" autocomplete="off" spellcheck="false">
+      </div>
+      <div class="row">
+        <button id="q-submit" class="primary">Check answer</button>
+        <button id="q-skip" class="link">Skip</button>
+      </div>
+      <div id="q-feedback" class="feedback" hidden></div>
+    </section>
+
+    <section id="screen-results" class="screen" hidden>
+      <h1>Set complete</h1>
+      <p id="results-score" class="score"></p>
+      <div id="results-list"></div>
+      <button id="results-again" class="primary">Practice again</button>
+    </section>
+
+    <section id="screen-stats" class="screen" hidden>
+      <h1>Your progress</h1>
+      <p id="stats-summary"></p>
+      <h2>By domain</h2>
+      <div id="stats-domains"></div>
+      <h2>By skill</h2>
+      <div id="stats-skills"></div>
+      <button id="stats-reset" class="danger">Reset all progress</button>
+    </section>
+
+    <section id="screen-review" class="screen" hidden>
+      <h1>Flagged questions</h1>
+      <p id="review-empty" class="muted">No flagged questions. Nothing to fix.</p>
+      <div id="review-list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="app/main.js"></script>
+</body>
+</html>

@@ -9,7 +9,7 @@ function tempRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "sat-serve-"));
   fs.mkdirSync(path.join(root, "app"), { recursive: true });
   fs.mkdirSync(path.join(root, "data"), { recursive: true });
-  fs.writeFileSync(path.join(root, "app", "index.html"), "<h1>SAT</h1>");
+  fs.writeFileSync(path.join(root, "index.html"), "<h1>SAT</h1>");
   fs.writeFileSync(path.join(root, "data", "math.json"), '{"questions":[]}');
   return root;
 }
@@ -35,8 +35,8 @@ test("resolveSafe refuses paths that escape the root", () => {
 
 test("resolveSafe maps the bare root to the app shell", () => {
   const root = path.resolve("/srv/app");
-  assert.equal(resolveSafe(root, "/"), path.join(root, "app", "index.html"));
-  assert.equal(resolveSafe(root, "/?mode=timed"), path.join(root, "app", "index.html"));
+  assert.equal(resolveSafe(root, "/"), path.join(root, "index.html"));
+  assert.equal(resolveSafe(root, "/?mode=timed"), path.join(root, "index.html"));
 });
 
 test("serves the shell, data files, and 404s for the missing", async () => {

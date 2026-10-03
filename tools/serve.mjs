@@ -23,7 +23,7 @@ export function resolveSafe(root, urlPath) {
   } catch {
     return null; // malformed percent-encoding
   }
-  const relative = decoded === "/" ? "app/index.html" : decoded.replace(/^\/+/, "");
+  const relative = decoded === "/" ? "index.html" : decoded.replace(/^\/+/, "");
   const base = path.resolve(root);
   const full = path.resolve(base, relative);
   if (full !== base && !full.startsWith(base + path.sep)) return null;

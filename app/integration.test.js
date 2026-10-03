@@ -158,7 +158,10 @@ test("every referenced Math image exists on disk", { skip: !haveData }, async ()
       checked++;
     }
   }
-  assert.ok(checked > 3000, `expected the full image set, saw ${checked}`);
+  // 610 questions * ~4.6 image refs each (stem + 4 choices + rationale, SPRs
+  // skip the choices). Expect at least two thousand so a mass-regression that
+  // halves the images shows up.
+  assert.ok(checked > 2000, `expected the full image set, saw ${checked}`);
 });
 
 test("every real question can be traced back to a page in its source PDF", { skip: !haveData }, async () => {

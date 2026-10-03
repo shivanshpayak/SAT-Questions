@@ -1,8 +1,7 @@
 node_modules/
-images/
-data/*.json
-!data/overrides.json
 .cache/
+data/diagnostic.json
 
 # Source PDFs: ~97MB of immutable input that never changes.
+# Hosted as a GitHub release (tag pdfs-v1) instead of being committed.
 *.pdf
